@@ -1,7 +1,7 @@
 '''
 # Implementation of MobileNet V3
 # in Tensorflow (Utils file)
-# Author: Will@Altizure
+# Author: Will@Alt****e
 # Date: 2019/06/02
 '''
 
