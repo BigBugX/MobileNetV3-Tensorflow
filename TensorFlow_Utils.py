@@ -9,11 +9,11 @@ import tensorflow as tf
 import cv2
 
 def get_init_weights(weights_h,
-					 weights_w,
-					 in_channels,
-					 out_channels,
-					 name=None
-					):
+		     weights_w,
+		     in_channels,
+		     out_channels,
+		     name=None
+		     ):
 	with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
 		w_shape = [weights_h, weights_w, in_channels, out_channels]
 		weights = tf.get_variable(name='weights', shape=w_shape, 
@@ -21,33 +21,33 @@ def get_init_weights(weights_h,
 	return weights
 
 def hswish(input, 
-		   name=None
-			):
+	   name=None
+	   ):
 	output = input * tf.nn.relu6(features=(input+3)/6, name=name) 
 	return output
 
 def hsigmoid(input, 
-			 name=None
-			):
+	     name=None
+	    ):
 	output = tf.nn.relu6(features=(input+3)/6, name=name)
 	return output
 
 
 def GlobalAvgPool2D(input,
-					name=None
-					):
+		    name=None
+		    ):
 	with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
 		output = tf.keras.layers.GlobalAveragePooling2D(name='KerasGlobalAvgPooling2D')(input)
 	return output
 
 def Conv2D(input,
-		   in_channels,
-		   out_channels,
-		   kernel_size=1,
-		   stride=1,
-		   padding='VALID',
-		   name=None
-			):
+	   in_channels,
+	   out_channels,
+	   kernel_size=1,
+	   stride=1,
+	   padding='VALID',
+	   name=None
+   	   ):
 	with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
 		w_shape = [kernel_size, kernel_size, in_channels, out_channels]
 		strides = [1, stride, stride, 1]
@@ -56,8 +56,8 @@ def Conv2D(input,
 		return output
 
 def BatchNorm(input,
-			  name=None
-			):
+	      name=None
+	      ):
 	with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
 		input_shape = input.get_shape().as_list()
 		params_shape = input_shape[-1]
@@ -73,16 +73,16 @@ def BatchNorm(input,
 	return output
 
 def ReLU(input,
-		 name=None
-		):
+	 name=None
+	 ):
 	output = tf.nn.relu(input,name=name)
 	return output
 
 def SeBlock(input,
-			in_channels,
-			reduction,
-			name=None
-			):
+   	    in_channels,
+	    reduction,
+    	    name=None	
+	    ):
 	with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
 		out_channels = in_channels // reduction
 		# Spatial-Excitation Module
@@ -97,28 +97,28 @@ def SeBlock(input,
 	return output
 
 def ResBlock(input,
-			 in_channels,
-			 out_channels,
-			 kernel_size=1,
-			 stride=1,
-			 padding='VALID',
-			 name=None
-			):
+	     in_channels,
+   	     out_channels,
+   	     kernel_size=1,
+	     stride=1,
+   	     padding='VALID',
+	     name=None
+	     ):
 	with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
 		output = Conv2D(input, in_channels, out_channels, 1, 1, 0, name='Conv2D')
 		output = BatchNorm(input, name='BatchNorm')
 	return output
 
 def Block(input,
-		  in_channels,
-		  out_channels,
-		  ex_channels,
-		  kernel_size,
-		  nonlinear,
-		  seblock,
-		  stride,
-		  name=None
-		):
+	  in_channels,
+	  out_channels,
+	  ex_channels,
+	  kernel_size,
+	  nonlinear,
+	  seblock,
+	  stride,
+	  name=None
+	  ):
 	with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
 		# strides = [1, stride, stride, 1]
 		# conv1
@@ -146,13 +146,13 @@ def Block(input,
 	return output
 
 def MobileNetV3_small(input,
-					  in_channels=3,
-					  out_channels=16,
-					  kernel_size=3,
-					  stride=2,
-					  padding='SAME',
-					  name='MobileNetV3_small'
-					  ):
+		      in_channels=3,
+	  	      out_channels=16,
+		      kernel_size=3,
+		      stride=2,
+		      padding='SAME',
+		      name='MobileNetV3_small'
+		      ):
 	with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
 		# conv1
 		output = Conv2D(input, in_channels, out_channels, 3, 2, 'SAME', name='Conv2D_1')
