@@ -14,9 +14,18 @@ import random
 def parse_line(line):
 	s = line.strip().split(' ')
 	pic_path = s[0]
+	# print(pic_path)
 	label = s[1]
 	img = cv2.imread(pic_path)
-	img = cv2.resize([224,224])
+	org_shape = img.shape
+	org_h, org_w = org_shape[0], org_shape[1]
+	if len(org_shape)<3 :
+		tmp = np.zeros([org_w, org_h, 3])
+		tmp[:,:,0] = img
+		tmp[:,:,1] = img
+		tmp[:,:,2] = img
+		img = tmp
+	img = cv2.resize(img, (224,224))
 	return img, label
 
 def parse_data(file_path):
@@ -39,6 +48,16 @@ def consume_data(img_lst, batch_size):
 		images.append(img)
 		labels.append(label)
 	return images, labels
+
+def evaluate(pred_list, anno_list):
+	# pred_list: np.array
+	# anno_list: char list
+	anno_list = np.array(anno_list)
+	anno_list = anno_list.astype(np.int64)
+	difference = anno_list - pred_list
+	difference_abs = np.absolute(difference)
+	difference_sum = np.sum(difference_abs)
+	return difference_sum/5000.
 
 if __name__ == '__main__':
 
@@ -65,11 +84,27 @@ if __name__ == '__main__':
 
 	with tf.Session() as sess:
 		sess.run(init)
-		for i in range(0, epoches):
-			for i in range(0, train_len/batch_size):
+		for i in range(1, epoches+1):
+			for j in range(0, int(train_len/batch_size)):
 				images, labels = consume_data(train_list, batch_size)
-				_, loss_ = sess.run([train_op, loss], feed_dict={input_images:images, input_labels:labels})
+				_, pred_, loss_ = sess.run([train_op, pred, loss], feed_dict={input_images:images, input_labels:labels})
+				
 				info = "Epoch: {}, global_step: {}, loss: {:.3f}".format(i, global_step, loss_)
+				print(info)
+
+				if (global_step%200 == 0):
+					pred_lst = []
+					anno_lst = []
+					for m in range(0, 500):
+						images, labels = consume_data(test_list, 10)
+						predictions = sess.run([pred], feed_dict={input_images:images})
+						predictions = np.argmax(predictions[0], axis=1)
+						pred_lst.extend(predictions)
+						anno_lst.extend(labels)
+					accuracy = evaluate(pred_lst, anno_lst)
+					info = "global_step: {}, accuracy: {:.3f}".format(global_step, accuracy)
+					print(info)
+
 				global_step = global_step + 1
 
 
