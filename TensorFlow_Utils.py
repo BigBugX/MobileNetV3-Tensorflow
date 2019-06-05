@@ -168,24 +168,21 @@ def MobileNetV3_small(input,
 		b_output = Block(b_output, 40, 40, 240, 5, 'hswish', 40, 1, name='block6')
 		b_output = Block(b_output, 40, 48, 120, 5, 'hswish', 48, 1, name='block7')
 		b_output = Block(b_output, 48, 48, 144, 5, 'hswish', 48, 1, name='block8')
-		b_output = Block(b_output, 48, 48, 288, 5, 'hswish', 96, 1, name='block9')
+		b_output = Block(b_output, 48, 96, 288, 5, 'hswish', 96, 2, name='block9')
 		b_output = Block(b_output, 96, 96, 576, 5, 'hswish', 96, 1, name='block10')
 		b_output = Block(b_output, 96, 96, 576, 5, 'hswish', 96, 1, name='block11')
 		# conv2
-		output = Conv2D(output, 96, 576, 1, 1, 0, name='Conv2D_2')
+		output = Conv2D(b_output, 96, 576, 1, 1, 'VALID', name='Conv2D_2')
 		output = BatchNorm(output, name='BatchNorm_2')
 		output = hswish(output, name='hswish_2')
 		# avg_pool
-		output = tf.nn.avg_pool(output, 7)
-		# linear
-		output = tf.reshape(output, [-1])
-		output = tf.keras.layers.Dense(1280, activation='relu')
+		output = tf.nn.avg_pool(output, ksize=[1,7,7,1], strides=[1,1,1,1], padding='VALID')
+
+		output = Conv2D(output, 576, 1280, 1, 1, 'VALID', name='Conv2D_3')
 		output = BatchNorm(output, name='BatchNorm_3')
 		output = hswish(output, name='hswish_3')
-		output = tf.keras.layers.Dense(2, activation='relu')
-
-		output_idx = tf.argmax(output).numpy()
-		output = output[output_idx]
+		output = tf.keras.layers.Flatten()(output)
+		output = tf.keras.layers.Dense(2, activation='relu')(output)
 
 	return output
 
