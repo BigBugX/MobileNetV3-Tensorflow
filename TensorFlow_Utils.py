@@ -174,8 +174,48 @@ def MobileNetV3_small(input,
 
 	return output
 
+def MobileNetV3_large(input,
+			in_channels=3,
+			out_channels=16,
+			kernel_size=3,
+			stride=2,
+			padding='SAME',
+			name='MobileNetV3_large'
+		     ):
+	with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
+		# conv1
+		output = Conv2D(input, in_channels, out_channels, 3, 2, padding, name='Conv2D_1')
+		output = BatchNorm(output, name='BatchNorm_1')
+		output = hswish(output, name='hswish_1')
+		# bottle_neck output
+		#                          in  ou  ex  k      nl     se   s
+		b_output = Block(output,   16, 16, 16,  3,  'ReLU',  None, 1, name='block1')
+		b_output = Block(b_output, 16, 24, 64,  3,  'ReLU',  None, 2, name='block2')
+		b_output = Block(b_output, 24, 24, 72,  3,  'ReLU',  None, 1, name='block3')
+		b_output = Block(b_output, 24, 40, 72,  5,  'ReLU',   40,  2, name='block4')
+		b_output = Block(b_output, 40, 40, 120, 5,  'ReLU',   40,  1, name='block5')
+		b_output = Block(b_output, 40, 40, 120, 5,  'ReLU',   40,  1, name='block6')
+		b_output = Block(b_output, 40, 80, 240, 3, 'hswish', None, 2, name='block7')
+		b_output = Block(b_output, 80, 80, 200, 3, 'hswish', None, 1, name='block8')
+		b_output = Block(b_output, 80, 80, 184, 3, 'hswish', None, 1, name='block9')
+		b_output = Block(b_output, 80, 80, 184, 3, 'hswish', None, 1, name='block10')
+		b_output = Block(b_output, 80, 480,112, 3, 'hswish',  112, 1, name='block11')
+		b_output = Block(b_output, 112,112,672, 3, 'hswish',  112, 1, name='block12')
+		b_output = Block(b_output, 112,160,672, 5, 'hswish',  160, 1, name='block13')
+		b_output = Block(b_output, 160,160,672, 5, 'hswish',  160, 2, name='block14')
+		b_output = Block(b_output, 160,160,960, 5, 'hswish',  160, 1, name='block15')
+		# conv2
+		output = Conv2D(b_output, 160, 960, 1, 1, 'VALID', name='Conv2D_2')
+		output = BatchNorm(output, name='BatchNorm_2')
+		output = hswish(output, name='hswish_2')
+		# avg_pool
+		output = tf.nn.avg_pool(output, ksize=[1,7,7,1], strides=[1,1,1,1], padding='VALID')
+		# phase 1: fully convolutional
+		output = Conv2D(output, 960, 1280, 1, 1, 'VALID', name='Conv2D_3')
+		output = BatchNorm(output, name='BatchNorm_3')
+		output = hswish(output, name='hswish_3')
+		output = tf.keras.layers.Flatten()(output)
+		output = tf.keras.layers.Dense(2, activation='relu')(output)
 
-
-
-
+	return output
 
