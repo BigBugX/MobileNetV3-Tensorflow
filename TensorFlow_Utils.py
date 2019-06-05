@@ -8,18 +8,6 @@
 import tensorflow as tf
 import cv2
 
-def get_init_weights(weights_h,
-		     weights_w,
-		     in_channels,
-		     out_channels,
-		     name=None
-		     ):
-	with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
-		w_shape = [weights_h, weights_w, in_channels, out_channels]
-		weights = tf.get_variable(name='weights', shape=w_shape, 
-									dtype=tf.float32, initializer='xavier', trainable=True)
-	return weights
-
 def hswish(input, 
 	   name=None
 	   ):
