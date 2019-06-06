@@ -1,7 +1,7 @@
 '''
 # Implementation of MobileNet V3
 # in TensorFlow (Model Define file)
-# Author: Will@Altizure
+# Author: Will@Alt****e
 # Date: 2019/06/02
 '''
 from __future__ import division, print_function
