@@ -110,6 +110,9 @@ def train_multi_gpu():
 			average_grads.append(grad_and_var)
 		return average_grads
 
+	def average_losses(tower_losses):
+		return tf.reduce_mean(tower_losses, axis=0)
+
 	def assign_to_device(device, ps_device='/cpu:0'):
 		def _assign(op):
 			node_def = op if isinstance(op, tf.NodeDef) else op.node_def
@@ -132,7 +135,7 @@ def train_multi_gpu():
 
 	with tf.device('/cpu:0'):
 		tower_grads = []
-		reuse_vars = False
+		tower_losses = []
 
 		input_images = tf.placeholder(shape=[None, 224, 224, 3], dtype=tf.float32)
 		input_labels = tf.placeholder(shape=[None, 2], dtype=tf.float32)
@@ -143,16 +146,22 @@ def train_multi_gpu():
 				_input_labels = input_labels[gpu_idx * batch_size: (gpu_idx+1) * batch_size]
 
 				pred = mnv3s_model(_input_images)
-				if (gpu_idx==0):
-					pred_eval = mnv3s_model(_input_images)
 
 				loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=_input_labels, logits=pred))
 
 				optimizer = tf.train.RMSPropOptimizer(0.0005)
+				
+				if (gpu_idx==0):
+					pred_eval = mnv3s_model(_input_images)
+					saver_to_save = tf.train.Saver()
+				saver_to_restore = tf.train.Saver()
+
 				grads = optimizer.compute_gradients(loss)
 				tower_grads.append(grads)
+				tower_losses.append(loss)
 
-		tower_grads = average_gradients(tower_grads)
+		tower_grad = average_gradients(tower_grads)
+		tower_loss = average_losses(tower_losses)
 		train_op = optimizer.apply_gradients(tower_grads)
 
 		init = tf.global_variables_initializer()
@@ -162,11 +171,34 @@ def train_multi_gpu():
 
 		with tf.Session() as sess:
 			sess.run(init)
-			for i in range(1, epoches+1):
+			if use_pretrained:
+				saver_to_restore.restore(sess, './checkpoints/mnv3.ckpt')
+			for i in range(1， epoches+1):
 				train_list = copy.deepcopy(train_list_backup)
-				random.shuffle(train_list)
+				for j in range(0, train_len//(batch_size*num_gpus)):
+					images, labels = consume_data(train_list, batch_size*num_gpus)
+					labels = convert_to_one_hot(labels)
+					_, loss_ = sess.run([train_op, tower_loss], feed_dict={input_images:images, input_labels:labels})
 
+					info = "Epoch: {}, global_step: {}, average_loss: {:.3f}".format(i, global_step, loss_)
+					print(info)
 
+					if (global_step%200 == 0):
+						pred_lst = []
+						anno_lst = []
+						test_list = copy.deepcopy(test_list_backup)
+						for m in range(0, 100):
+							images, labels = consume_data(test_list, 10)
+							predictions = sess.run(pred_eval, feed_dict={input_images:images})
+							predictions = np.argmax(prediction, axis=1)
+							pred_lst.extend(prediction)
+							anno_lst.extend(labels)
+						evaluate_acc(pred_lst, anno_lst)
+
+					if (global_step%1000 == 0):
+						saver_to_save.save(sess, save_dir+'model-step_{}_loss_{:4f}'.format(global_step, loss_))
+
+					global_step = global_step + 1
 
 def train_single_gpu():
 	image_list = parse_data('cuhkpq_train.txt')
@@ -208,8 +240,8 @@ def train_single_gpu():
 		for i in range(1, epoches+1):
 			train_list = copy.deepcopy(train_list_backup)
 			random.shuffle(train_list)
-			for j in range(0, int(train_len/batch_size)):
-				images, labels = consume_data(train_list, batch_size)
+			for j in range(0, int(train_len/(batch_size*num_gpus))):
+				images, labels = consume_data(train_list, batch_size*num_gpus)
 				labels = convert_to_one_hot(labels)
 				_, pred_, loss_ = sess.run([train_op, pred, loss], feed_dict={input_images:images, input_labels:labels})
 				
@@ -267,7 +299,6 @@ def eval_pretrained():
 		evaluate_acc(pred_lst, anno_lst)
 				
 if __name__ == '__main__':
-	train()
+	train_single_gpu()
+	# train_multi_gpu()
 	# eval_pretrained()
-
-	
